@@ -155,9 +155,30 @@ function signature(privateKey, message) {
   return raw.toString('base64url'); // Node's base64url is unpadded by construction
 }
 
+/** A close match to Python's repr() for a plain string: picks the same
+ * quote character Python would (single, unless the string has a single
+ * quote and no double quote), so error messages are byte-identical to
+ * the Python script's `{nonce!r}` output for realistic inputs.
+ */
+function pyRepr(s) {
+  const hasSingle = s.includes("'");
+  const hasDouble = s.includes('"');
+  const quote = hasSingle && !hasDouble ? '"' : "'";
+  let out = quote;
+  for (const ch of s) {
+    if (ch === '\\') out += '\\\\';
+    else if (ch === quote) out += '\\' + quote;
+    else if (ch === '\n') out += '\\n';
+    else if (ch === '\r') out += '\\r';
+    else if (ch === '\t') out += '\\t';
+    else out += ch;
+  }
+  return out + quote;
+}
+
 function requireNonce(nonce) {
   if (!/^[0-9]{1,19}$/.test(nonce)) {
-    throw new CliError(`nonce must be 1-19 ASCII digits, got ${JSON.stringify(nonce)}`);
+    throw new CliError(`nonce must be 1-19 ASCII digits, got ${pyRepr(nonce)}`);
   }
 }
 
