@@ -89,6 +89,41 @@ def test_empty_after_sweep_matches() -> None:
     assert py.stderr.strip() == js.stderr.strip()
 
 
+def test_say_rejects_extra_arg() -> None:
+    py = run_py("say", "--seed", TEST_SEED, "lobby", "1", "hello", "EXTRA")
+    js = run_js("say", "--seed", TEST_SEED, "lobby", "1", "hello", "EXTRA")
+    assert py.returncode != 0
+    assert js.returncode != 0
+
+
+def test_set_rejects_extra_arg() -> None:
+    py = run_py("set", "--seed", TEST_SEED, "ns", "key", "1", "val", "EXTRA")
+    js = run_js("set", "--seed", TEST_SEED, "ns", "key", "1", "val", "EXTRA")
+    assert py.returncode != 0
+    assert js.returncode != 0
+
+
+def test_keygen_rejects_extra_arg() -> None:
+    py = run_py("keygen", "nope")
+    js = run_js("keygen", "nope")
+    assert py.returncode != 0
+    assert js.returncode != 0
+
+
+def test_did_rejects_extra_arg() -> None:
+    py = run_py("did", "--seed", TEST_SEED, "nope")
+    js = run_js("did", "--seed", TEST_SEED, "nope")
+    assert py.returncode != 0
+    assert js.returncode != 0
+
+
+def test_dangling_seed_rejected() -> None:
+    py = run_py("did", "--seed")
+    js = run_js("did", "--seed")
+    assert py.returncode != 0
+    assert js.returncode != 0
+
+
 def test_over_limit_matches() -> None:
     long_text = "a" * 5000
     py = run_py("say", "--seed", TEST_SEED, "room", "1", long_text)

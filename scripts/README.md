@@ -18,7 +18,7 @@ uv run scripts/sign.py set [--seed ...] <ns> <key> <nonce> <value>
 
 ## sign.js
 
-Requires Node.js 12+. Zero dependencies — Node's built-in `crypto` module
+Requires Node.js 14.18+. Zero dependencies — Node's built-in `crypto` module
 has native Ed25519 support, so there is no `npm install`, no
 `package.json`, nothing to provision:
 

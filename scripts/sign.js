@@ -6,10 +6,13 @@
  *
  * Node.js port of scripts/sign.py, kept byte-for-byte compatible with it.
  * Standalone on purpose: Node's built-in `crypto` module has native
- * Ed25519 support (since v12), so this needs zero npm dependencies —
- * `node sign.js ...` just works, no `npm install`, no package.json,
- * no lockfile. That matches the project's own stated philosophy: an
- * agent (or human) with nothing but a runtime is a full participant.
+ * Ed25519 support, so this needs zero npm dependencies — `node sign.js
+ * ...` just works, no `npm install`, no package.json, no lockfile.
+ * That matches the project's own stated philosophy: an agent (or
+ * human) with nothing but a runtime is a full participant.
+ *
+ * Requires Node.js 14.18+ — the floor is Buffer.toString('base64url'),
+ * not the Ed25519 support (which landed earlier, in v12).
  *
  * The whole point of this file is the canonical string. The server
  * verifies a signature over exactly what it stores:
@@ -184,14 +187,20 @@ function requireNonce(nonce) {
 
 /** Pull `--seed VALUE` out of argv wherever it appears (before or after
  * the subcommand, matching the Python script's argparse behavior), and
- * return { seed, rest }.
+ * return { seed, rest }. A `--seed` with nothing after it (or immediately
+ * followed by another flag) is rejected rather than silently treated as
+ * "no seed given" — argparse does the same (exit 2, "expected one argument").
  */
 function extractSeed(argv) {
   const rest = [];
   let seed;
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--seed') {
-      seed = argv[i + 1];
+      const next = argv[i + 1];
+      if (next === undefined || next.startsWith('--')) {
+        throw new CliError('argument --seed: expected one argument');
+      }
+      seed = next;
       i++;
     } else {
       rest.push(argv[i]);
@@ -210,11 +219,24 @@ function usage() {
   ].join('\n');
 }
 
+/** argparse rejects extra positional arguments outright (exit 2,
+ * "unrecognized arguments"); without this, destructuring more values
+ * than a command expects would silently ignore the surplus instead of
+ * refusing it. Not exact-wording-compatible with argparse (not worth
+ * chasing), but the non-zero exit and the refusal are what matter.
+ */
+function expectArity(args, n) {
+  if (args.length !== n) {
+    throw new CliError(usage());
+  }
+}
+
 function main() {
   const { seed, rest } = extractSeed(process.argv.slice(2));
   const [cmd, ...args] = rest;
 
   if (cmd === 'keygen') {
+    expectArity(args, 0);
     const seedBytes = crypto.randomBytes(32);
     const key = privateKeyFromSeed(seedBytes);
     console.log(`seed: ${seedBytes.toString('hex')}`);
@@ -223,14 +245,15 @@ function main() {
   }
 
   if (cmd === 'did') {
+    expectArity(args, 0);
     const key = loadKey(seed);
     console.log(didOf(key));
     return;
   }
 
   if (cmd === 'say') {
+    expectArity(args, 3);
     const [room, nonce, text] = args;
-    if (room === undefined || nonce === undefined || text === undefined) throw new CliError(usage());
     requireNonce(nonce);
     const canonical = `${room}|${nonce}|${swept(text, MAX_TEXT_CHARS)}`;
     const key = loadKey(seed);
@@ -240,10 +263,8 @@ function main() {
   }
 
   if (cmd === 'set') {
+    expectArity(args, 4);
     const [ns, key_, nonce, value] = args;
-    if (ns === undefined || key_ === undefined || nonce === undefined || value === undefined) {
-      throw new CliError(usage());
-    }
     requireNonce(nonce);
     const canonical = `${ns}|${key_}|${nonce}|${swept(value, MAX_VALUE_CHARS)}`;
     const key = loadKey(seed);
