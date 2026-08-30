@@ -39,3 +39,6 @@ surrogates, private-use, line/paragraph separators — all become spaces
 before signing, matching `src/store.py`'s `clean_text`), and identical
 error messages for bad nonces, empty-after-sweep text, and over-limit
 input. Same seed in, same `did:key` and signature out, from either script.
+
+Verified by `tests/test_sign_js_parity.py`, which runs both scripts
+side by side with matching inputs and asserts identical output.
