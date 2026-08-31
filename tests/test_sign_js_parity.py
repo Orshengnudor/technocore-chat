@@ -7,6 +7,7 @@ any future CI job that does have one.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -27,17 +28,31 @@ TEST_PASSPHRASE = "a passphrase seed, not hex"
 
 
 def run_py(*args: str) -> subprocess.CompletedProcess[str]:
+    # Explicit encoding, not left to the OS locale: on Windows with a
+    # non-UTF-8 system locale (e.g. CP932), subprocess.run(text=True)
+    # decodes the child's output using that locale, and this script's
+    # own error strings contain an em dash -- non-ASCII bytes that
+    # locale can't decode, so capture would raise instead of comparing.
+    # PYTHONIOENCODING forces sign.py's own stdio to emit UTF-8 in the
+    # first place, matching what we tell subprocess to expect back.
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
     return subprocess.run(
         [sys.executable, str(SIGN_PY), *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=env,
         check=False,
     )
 
 
 def run_js(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["node", str(SIGN_JS), *args], capture_output=True, text=True, check=False
+        ["node", str(SIGN_JS), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=False,
     )
 
 
